@@ -1,0 +1,6 @@
+    GROQ_API_KEY=cole_aqui
+    LANGSMITH_API_KEY=cole_aqui
+    LANGSMITH_TRACING=true
+    LANGSMITH_PROJECT=bjj-agent
+    YOUTUBE_API_KEY=cole_aqui
+    USE_DUMMY=false
