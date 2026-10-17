@@ -181,7 +181,7 @@ Detalhamento e implementação na fase 3.
 | **Identificação de nível** | Sem faixa declarada, "pass a De La Riva guard" virou BEGINNER (regra *when in doubt*); com "white belt"/"brown belt" o nível veio certo | Regra conservadora mantida; perfil de longo prazo (seção 6) resolve |
 | **Busca do vídeo** | Frase inteira + 1 resultado trouxe vídeo de triângulo para pergunta de kimura | `search_chain` (`PromptTemplate`) gera palavras-chave → vídeos coerentes (ex.: *"mount escape technique bjj"* → *The First 3 Mount Escapes You Need To Know in BJJ*) |
 | **Idioma** | Perguntas em inglês respondidas em português; com os campos do schema renomeados para inglês, parte passou a vir em inglês | Ainda em aberto: algo no prompt ainda puxa o português |
-| **Stream** | Com o prompt completo, o Groq transmite o raciocínio aos pedaços, mas entrega o JSON final em **1 bloco** (prompts curtos streamam em centenas de pedaços) | `stream` depende do modelo/provedor; na interface, mostrar indicador de "pensando" |
+| **Stream** | Com o mesmo código e o mesmo prompt, o Groq entregou o JSON final ora em **1 bloco**, ora em **258 pedaços**; o raciocínio sempre vem aos pedaços | `stream` depende do provedor e varia entre execuções; na interface, mostrar indicador de "pensando" |
 | **Tamanho do prompt** | Prompt reduzido de ~1.080 para ~690 tokens (fora as `format_instructions`), mantendo as regras anti-alucinação | Cabe mais chamadas por minuto no free tier |
 
 ### `batch` × `invoke`
