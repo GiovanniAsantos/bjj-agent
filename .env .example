@@ -4,3 +4,4 @@
     LANGSMITH_PROJECT=bjj-agent
     YOUTUBE_API_KEY=cole_aqui
     USE_DUMMY=false
+    GROQ_MODEL=openai/gpt-oss-120b
