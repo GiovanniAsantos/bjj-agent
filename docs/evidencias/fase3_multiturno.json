@@ -1,0 +1,230 @@
+{
+  "run_id": "01a17a98-9cbe-7d00-8edb-a97d0807332a",
+  "turns": [
+    {
+      "question": "Sou faixa azul, treino com kimono e tenho lesão no joelho esquerdo.",
+      "standalone": "Sou faixa azul, treino com kimono e tenho lesão no joelho esquerdo.",
+      "intent": "off_topic",
+      "entities": {
+        "belt": "blue",
+        "gi": "gi",
+        "injuries": [
+          "left knee"
+        ]
+      },
+      "state": {},
+      "profile": {
+        "belt": "blue",
+        "gi": "gi",
+        "injuries": [
+          "left knee"
+        ],
+        "studied_techniques": []
+      },
+      "answer": {
+        "level": "ADVANCED",
+        "context": "Entendi que você é faixa azul, treina com kimono e tem lesão no joelho esquerdo.",
+        "clarifying_question": "Qual técnica, posição ou conceito você gostaria de trabalhar, levando em conta a lesão no joelho esquerdo?"
+      },
+      "video": null
+    },
+    {
+      "question": "Estou na guarda fechada e ele prendeu meu braço no chão.",
+      "standalone": "Como escapar quando estou na guarda fechada e o oponente prendeu meu braço no chão?",
+      "intent": "technique",
+      "entities": {
+        "position": "closed guard",
+        "opponent_action": "gripped my arm on the ground",
+        "injuries": []
+      },
+      "state": {
+        "position": "closed guard",
+        "opponent_action": "gripped my arm on the ground"
+      },
+      "profile": {
+        "belt": "blue",
+        "gi": "gi",
+        "injuries": [
+          "left knee"
+        ],
+        "studied_techniques": []
+      },
+      "answer": {
+        "level": "ADVANCED",
+        "context": "Você está na guarda fechada e o adversário prendeu seu braço no chão; o objetivo é criar espaço e finalizar ou varrer sem sobrecarregar o joelho esquerdo.",
+        "steps": [
+          "Segure firmemente o pulso do braço preso e puxe o cotovelo para dentro, mantendo a pegada alta para impedir que ele recupere a postura.",
+          "Coloque a perna que está do lado oposto ao braço preso sobre o peito do adversário, pressionando com o calcanhar para bloquear o movimento dele.",
+          "Gire o quadril para fora, trazendo a perna que está sobre o peito para cima e alinhando a coxa contra o pescoço do adversário, criando o ângulo necessário para o armlock.",
+          "Ajuste a pegada: uma mão segura o pulso, a outra segura o tríceps ou a manga, e puxe a perna para fechar o triângulo de braço, estendendo o quadril.",
+          "Aplique a pressão no braço, puxando o pulso e empurrando o quadril para finalizar o armlock; libere imediatamente ao sentir o tap."
+        ],
+        "details": [
+          "Pegada alta no pulso impede que o adversário recupere a postura; a segunda mão no tríceps aumenta o controle do braço.",
+          "O calcanhar no peito funciona como um bloqueio sem exigir força excessiva do joelho esquerdo.",
+          "O giro do quadril deve ser rápido e completo para alinhar a coxa com o pescoço, criando o ângulo de 90° necessário para o armlock.",
+          "Se o adversário tentar puxar o braço para fora, mantenha a pressão no quadril e ajuste a pegada para transformar em kimura ou omoplata.",
+          "Observe a reação do oponente: se ele tentar levantar, a perna no peito impede, facilitando a finalização."
+        ],
+        "variations": [
+          "Kimura a partir da guarda fechada, usando a mesma pegada de controle de braço.",
+          "Triângulo (triangle choke) se o adversário soltar o braço e expor a cabeça.",
+          "Omoplata, girando a perna sobre o braço para atacar a articulação do ombro."
+        ],
+        "safety": "Sempre peça o tap antes de aplicar pressão total; libere a submissão imediatamente ao ouvir o tap ou sentir desconforto. Treine sob supervisão de um instrutor."
+      },
+      "video": null
+    },
+    {
+      "question": "E se ele levantar e ficar em pé?",
+      "standalone": "E se o adversário levantar e ficar em pé na guarda fechada?",
+      "intent": "technique",
+      "entities": {
+        "position": "closed guard",
+        "opponent_action": "lift up and stand up",
+        "injuries": []
+      },
+      "state": {
+        "position": "closed guard",
+        "opponent_action": "lift up and stand up"
+      },
+      "profile": {
+        "belt": "blue",
+        "gi": "gi",
+        "injuries": [
+          "left knee"
+        ],
+        "studied_techniques": []
+      },
+      "answer": {
+        "level": "ADVANCED",
+        "context": "O oponente se levanta da sua guarda fechada e fica em pé; o objetivo é impedir que ele passe a guarda e buscar varredura ou finalização sem sobrecarregar o joelho esquerdo.",
+        "steps": [
+          "Mantenha a pegada alta no pulso e na manga do braço que está preso, puxando o cotovelo para dentro para impedir que ele recupere a postura.",
+          "Com a perna direita (lado oposto ao joelho lesionado), coloque o pé no quadril ou na virilha do adversário, criando alavanca para o movimento de quadril.",
+          "Execute o hip‑bump sweep: empurre o quadril do oponente com a perna direita enquanto gira o quadril para o lado esquerdo, usando o braço controlado para direcionar a queda.",
+          "Quando ele cair, recupere a guarda fechada ou transicione rapidamente para a montada, mantendo a pegada no braço para evitar que ele se levante novamente.",
+          "Se ele tentar se equilibrar, mantenha a pegada e ajuste a perna para um arm‑drag ou kimura trap, aproveitando a abertura criada pelo sweep."
+        ],
+        "details": [
+          "Pegada: mão direita segura o pulso do braço esquerdo do oponente; mão esquerda segura a manga ou o tríceps, puxando para dentro e para cima.",
+          "Ângulo: o quadril deve girar aproximadamente 45° para o lado esquerdo, alinhando a perna direita sob o tronco do adversário.",
+          "Tempo: o sweep deve ser iniciado assim que o oponente colocar peso na perna esquerda (a que está lesionada), aproveitando o desequilíbrio momentâneo.",
+          "Reação do oponente: ele tentará colocar a mão no chão para se apoiar; mantenha a pegada firme e use o quadril para derrubá‑lo antes que ele recupere o equilíbrio."
+        ],
+        "variations": [
+          "Scissor sweep adaptado: use a perna direita como a lâmina de corte e a esquerda apenas como apoio leve, evitando pressão no joelho lesionado.",
+          "Standing guard break: empurre o tronco do oponente com as duas mãos (pulso e manga) enquanto pressiona o quadril com a perna direita, forçando-o a recuar.",
+          "Kimura trap sweep: após controlar o braço, gire o pulso para a posição de kimura e use a perna direita para puxar o quadril, finalizando com a queda."
+        ],
+        "safety": "Sempre peça o tap antes de aplicar pressão total no braço; libere a submissão ao primeiro toque e treine sob supervisão de um instrutor, especialmente com a lesão no joelho esquerdo."
+      },
+      "video": null
+    },
+    {
+      "question": "Que raspagem é segura pra mim agora?",
+      "standalone": "Qual raspagem é segura para mim agora, estando na guarda fechada enquanto o oponente levanta e fica em pé?",
+      "intent": "technique",
+      "entities": {
+        "position": "closed guard",
+        "opponent_action": "lift up and stand up",
+        "injuries": []
+      },
+      "state": {
+        "position": "closed guard",
+        "opponent_action": "lift up and stand up"
+      },
+      "profile": {
+        "belt": "blue",
+        "gi": "gi",
+        "injuries": [
+          "left knee"
+        ],
+        "studied_techniques": []
+      },
+      "answer": {
+        "level": "ADVANCED",
+        "context": "O oponente se levanta da sua guarda fechada; você quer uma raspagem segura que não sobrecarregue o joelho esquerdo.",
+        "steps": [
+          "Segure a manga do braço que está preso com a mão direita e o colarinho com a mão esquerda, mantendo a pegada alta.",
+          "Coloque o pé direito na virilha ou no quadril do adversário, enquanto o pé esquerdo fica firme no chão apenas como apoio leve, sem colocar peso no joelho lesionado.",
+          "Puxe o braço controlado para dentro e para baixo, criando um desequilíbrio para trás, ao mesmo tempo que empurra o quadril do adversário com a perna direita (hip‑bump).",
+          "Direcione o adversário para cair sobre as costas, mantendo a pegada para impedir que ele recupere a postura.",
+          "Recupere a guarda fechada ou avance para a montada, ajustando a posição da perna esquerda sem forçar o joelho."
+        ],
+        "details": [
+          "Use a pegada na manga para controlar o cotovelo e impedir que ele se recupere; a pegada no colarinho ajuda a puxar o tronco para trás.",
+          "O ponto de apoio da perna direita deve ficar próximo ao centro de gravidade do adversário, permitindo alavancagem sem necessidade de girar o joelho esquerdo.",
+          "Mantenha o quadril esquerdo levemente elevado, mas sem colocar carga; use o tronco para gerar a força do sweep.",
+          "Se o adversário tentar se apoiar nos pés, aumente a pressão na pegada e ajuste o ângulo da perna direita para empurrar mais o quadril.",
+          "Ao cair, mantenha a pressão no braço para evitar que ele se levante novamente e facilite a transição para a montada."
+        ],
+        "variations": [
+          "Hip‑bump sweep tradicional (mesmo controle de pegada, mas usando o quadril esquerdo para empurrar se o joelho permitir).",
+          "Pendulum sweep usando apenas a perna direita para balançar o adversário para o lado esquerdo.",
+          "Arm‑drag para kimura trap após o sweep, aproveitando a abertura criada na pegada."
+        ],
+        "safety": "Sempre treine a raspagem sob supervisão, libere a pressão imediatamente ao primeiro toque e evite colocar carga no joelho esquerdo; se sentir dor, pare e procure orientação de um profissional de saúde."
+      },
+      "video": null
+    },
+    {
+      "question": "Me mostra um vídeo disso.",
+      "standalone": "Você pode me mostrar um vídeo da raspagem segura na guarda fechada?",
+      "intent": "video",
+      "entities": {
+        "position": "closed guard",
+        "technique": "raspagem segura",
+        "injuries": []
+      },
+      "state": {
+        "position": "closed guard",
+        "technique": "raspagem segura",
+        "opponent_action": "lift up and stand up"
+      },
+      "profile": {
+        "belt": "blue",
+        "gi": "gi",
+        "injuries": [
+          "left knee"
+        ],
+        "studied_techniques": [
+          "raspagem segura"
+        ]
+      },
+      "answer": {
+        "level": "ADVANCED",
+        "context": "Vídeo sugerido: Flower Sweep Vs Pendulum Sweep (How &amp; When To Use Them) — https://www.youtube.com/watch?v=8zuFg-PigDc"
+      },
+      "video": "Flower Sweep Vs Pendulum Sweep (How &amp; When To Use Them) — https://www.youtube.com/watch?v=8zuFg-PigDc"
+    },
+    {
+      "question": "O que você já sabe sobre mim?",
+      "standalone": "O que você já sabe sobre mim?",
+      "intent": "off_topic",
+      "entities": {
+        "injuries": []
+      },
+      "state": {
+        "position": "closed guard",
+        "technique": "raspagem segura",
+        "opponent_action": "lift up and stand up"
+      },
+      "profile": {
+        "belt": "blue",
+        "gi": "gi",
+        "injuries": [
+          "left knee"
+        ],
+        "studied_techniques": [
+          "raspagem segura"
+        ]
+      },
+      "answer": {
+        "level": "ADVANCED",
+        "context": "Sei que você tem faixa azul, treina com kimono (gi), tem uma lesão no joelho esquerdo, estudou a técnica de raspagem segura, e está atualmente na guarda fechada enquanto o oponente tenta levantar e ficar em pé."
+      },
+      "video": null
+    }
+  ]
+}

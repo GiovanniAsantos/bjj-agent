@@ -113,10 +113,11 @@ Escala usada:
 | | Nível | Evidência |
 | --- | --- | --- |
 | **Início (00_setup)** | 0 | `llm.invoke("What is the diference between an armlock and a triangle?")` com string crua |
-| **Atual (fim da fase 1)** | 1 | `chat_prompt` (PTCF) + `PydanticOutputParser` (`MestreResponse`), `search_chain` com `PromptTemplate`, `invoke`/`batch`/`stream`; vídeo por código fixo |
+| **Fim da fase 1** | 1 | `chat_prompt` (PTCF) + `PydanticOutputParser` (`MestreResponse`), `search_chain` com `PromptTemplate`, `invoke`/`batch`/`stream`; vídeo por código fixo |
+| **Atual (fim da fase 2)** | 2 → 3 (parcial) | Router por intenção (`RunnableBranch` + classificador PTCF/few-shot) escolhe um caminho por pergunta (nível 2); agente `create_agent` com 3 tools (`search_video`, `search_wikipedia`, `search_technique` sobre FAISS) e memória por thread (`MemorySaver`), mais o ReAct legado (`initialize_agent`). Falta para o nível 3 completo: memória de conversa e perfil (fase 3) e `query_adcc` (fase 4). Ver `04_relatorio_fase2.md`. |
 | **Alvo (fase 5)** | 4 | ReAct + memória + RAG/SQL + verificação NLI + avaliação no LangSmith |
 
-Caminho: fase 2 → nível 2/3 (ferramentas + ReAct; `search_video` vira ferramenta), fase 3 → nível 3 (memória), fase 4 → nível 3 completo (RAG e SQL), fase 5 → nível 4 (verificação e avaliação).
+Caminho: fase 2 → nível 2/3 (ferramentas + ReAct; `search_video` vira ferramenta) ✔, fase 3 → nível 3 (memória), fase 4 → nível 3 completo (RAG e SQL), fase 5 → nível 4 (verificação e avaliação).
 
 ## 5. Decomposição hierárquica (1.4)
 
@@ -170,6 +171,8 @@ class StudentProfile(BaseModel):
 ```
 
 Detalhamento e implementação na fase 3.
+
+**Implementado na fase 3** (ver `05_relatorio_fase3.md`): curto prazo = buffer + `trim_messages` (janela de 300 tokens) + `FightState` (posição, técnica, ação do oponente); longo prazo = `StudentProfile` com `belt`, `gi`, `injuries` e `studied_techniques`, alimentado por extração de entidades (`BJJEntities`) e regra de merge em código. `weight_kg` e `style` ficaram de fora até haver uso. A persistência entre sessões fica para a fase 5.
 
 ## 7. Evidências e achados da fase 1
 
