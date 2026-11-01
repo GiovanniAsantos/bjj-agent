@@ -1,9 +1,8 @@
 # Relatório da Fase 4 — Ferramentas, APIs, Text-to-SQL e RAG
 
-> Sprint 3 (29–31/10/2026). Rubrica 4.1 a 4.5.
+> Sprints 3–4 (29/10 e 01/11/2026). Rubrica 4.1 a 4.5.
 > Artefatos: [`notebooks/04_tools_rag.ipynb`](../notebooks/04_tools_rag.ipynb), [`src/tools.py`](../src/tools.py), [`src/text_to_sql.py`](../src/text_to_sql.py).
 >
-> **Status:** §1–§5 cobrem 4.1–4.3 (29/10). §6–§7 (4.4, 4.5) serão preenchidas após o agente de recuperação.
 
 ## 1. Objetivo da fase
 
@@ -16,8 +15,8 @@ Dar ao Mestre **ferramentas de natureza diferente** e saber quando cada uma é a
 | 4.1 Tipologia das ferramentas | `04_tools_rag` §4.1; este relatório §3 | Nova tool hardcoded `ibjjf_points`; tabela hardcoded × semântica × API × text-to-query |
 | 4.2 APIs por tipo de uso | `04_tools_rag` §4.2; este relatório §4 | Busca, consulta, local; retry com backoff, cache, timeout, dummy; ausência deliberada de tools de escrita |
 | 4.3 Text-to-SQL sobre SQLite | `04_tools_rag` §4.3; `src/text_to_sql.py`; `@tool query_adcc` | Geração estruturada (`SQLQuery`), segurança em 2 camadas, retry com erro, avaliação 6/6 contra gabarito |
-| 4.4 Agente de recuperação | *a preencher* | Índice FAISS existente (`load_local`), casos difíceis |
-| 4.5 Falha real + correção | *a preencher* | Diagnóstico nos documentos-fonte, multi-query / HyDE |
+| 4.4 Agente de recuperação | `04_tools_rag` §4.4; este relatório §6 | Índice da Fase 2 via `load_local`; diagnóstico do retrieval em 10 casos difíceis; agente `create_agent` com reescrita da query |
+| 4.5 Falha real + correção | `04_tools_rag` §4.5; este relatório §7 | Fichas sem aliases + chunk "hub"; multi-query v1 (8/10) → v2 120b + RRF (10/10) |
 
 ## 3. Tipologia das ferramentas (4.1)
 
@@ -180,15 +179,131 @@ Resultado: *"As finalizações mais comuns entre as mulheres são Toe hold e RNC
 
 ## 6. Agente de recuperação (4.4)
 
-*A preencher.*
+O índice da Fase 2 (`data/index/techniques/`, 36 chunks = 6 fichas × seções Position, Goal, Steps, Common mistakes, Defenses, Safety) é reaproveitado com `FAISS.load_local` via `load_technique_index()`, sem reindexar. Embedding: `paraphrase-multilingual-MiniLM-L12-v2`, local em CPU.
+
+### 6.1 Retrieval isolado em casos difíceis
+
+Antes do agente, o retrieval foi medido sozinho (`similarity_search_with_score`, k = 3, distância L2: menor = mais parecido). Assim, quando a resposta final erra, dá para separar a falha da busca da falha do LLM. As fichas estão só em inglês e não têm aliases.
+
+| Query | Tipo | Esperado | Top-1 | Dist. | Top-1 ok | Top-3 ok |
+| --- | --- | --- | --- | --- | --- | --- |
+| armlock closed guard | Controle (EN exato) | armlock | armlock / Safety | 12,6 | ✅ | ✅ |
+| chave de braço na guarda fechada | Gíria PT | armlock | armlock / Safety | 12,0 | ✅ | ✅ |
+| juji gatame from guard | Nome japonês | armlock | kimura / Steps | 15,8 | ❌ | ❌ |
+| raspagem de tesoura | PT | scissor_sweep | scissor_sweep / Common mistakes | 13,8 | ✅ | ✅ |
+| ude garami | Nome japonês da kimura | kimura | dlr / Common mistakes | 14,8 | ❌ | ❌ |
+| como sair de baixo da montada | PT descritivo | mount_escape_upa | dlr / Common mistakes | 12,4 | ❌ | ✅ |
+| passar a guarda de la riva | PT + nome próprio | dlr_guard_pass | dlr / Common mistakes | 9,7 | ✅ | ✅ |
+| trinagle chok | Erro de digitação | triangle | triangle / Goal | 15,8 | ✅ | ✅ |
+| berimbolo | Fora da KB | — | dlr / Common mistakes | 18,9 | — | — |
+| como saio daí? | Ambígua | — | dlr / Common mistakes | 15,6 | — | — |
+
+**Top-1 5/8, top-3 6/8.** Observações:
+
+- O embedding multilíngue resolve bem o português comum ("chave de braço", "raspagem de tesoura") e até o erro de digitação. Falha nos **nomes japoneses**, que não têm nenhuma palavra em comum com as fichas.
+- **Chunk "hub":** `dlr_guard_pass / Common mistakes` foi top-1 em 5 das 10 queries. É curto e feito só de palavras genéricas do esporte (sweep, back, pass, guard, hips), por isso fica "perto de tudo" no espaço vetorial.
+- **Distância não serve como limiar de abstenção.** O caso fora da KB (18,9) é pior que todos os acertos (máx. 15,8), mas "como saio daí?" (15,6) cai no meio deles.
+- O "berimbolo" casou com o DLR porque a ficha **cita** a técnica ("the bottom player sweeps or takes the back (berimbolo)") sem ensiná-la. A KB menciona, mas não cobre.
+
+### 6.2 Agente
+
+```python
+rag_agent = create_agent(llm, [search_technique], system_prompt=RAG_SYSTEM)
+```
+
+`create_agent` (LangChain 1.x, function calling nativo, gpt-oss-120b). O `RAG_SYSTEM` define 4 regras:
+
+1. reescrever a pergunta como nome padrão da técnica em inglês antes de buscar;
+2. responder só com as seções retornadas, citando a ficha;
+3. admitir quando a KB não cobre o assunto;
+4. pedir esclarecimento se não houver técnica nem posição.
+
+`run_rag_agent` extrai a **trajetória**: o argumento de cada `tool_call` e as fichas presentes nos `ToolMessage`.
+
+| Pergunta | Query enviada à tool | Fichas | Comportamento |
+| --- | --- | --- | --- |
+| Como faço chave de braço na guarda fechada? | `armlock closed guard` | armlock | ✅ Passo a passo citando a ficha e a seção |
+| Como faço um juji gatame saindo da guarda? | `armbar closed guard` | armlock | ✅ Reescrita resolveu o caso que o retrieval puro errava |
+| Me ensina o ude garami | — (não buscou) | — | ⚠️ Reconheceu "(kimura)" mas pediu a posição: a regra 4 foi aplicada demais |
+| Como faço o berimbolo? | — (não buscou) | — | ✅ no resultado ("a base não inclui"), mas decidiu pela lista de fichas do prompt, não pelo retrieval |
+| Como saio daí? | — | — | ✅ Pergunta de esclarecimento |
+
+Dois achados:
+
+- **A reescrita pelo agente funciona, mas tem viés de avaliação.** `juji gatame → armbar` e `ude garami → kimura` estavam como exemplos no próprio prompt, então o agente acerta esses casos porque foi ensinado. Essa correção não generaliza por construção, e é por isso que o §7 usa casos inéditos.
+- **Descrever a KB no prompt deixa o agente pular o retrieval**, nos dois sentidos: recusa sem buscar (berimbolo) e pede esclarecimento sem buscar (ude garami). Isso é útil para economizar chamadas, mas torna o comportamento dependente do texto do prompt e não da base real. Se uma ficha nova for adicionada sem atualizar o prompt, o agente pode recusar o que sabe.
 
 ## 7. Falha real nos documentos-fonte + correção (4.5)
 
-*A preencher.*
+### 7.1 Diagnóstico
 
-## 8. Limitações (parcial)
+Falha escolhida: `ude garami → dlr_guard_pass / Common mistakes` e `juji gatame → kimura`.
+
+**Causa nos documentos-fonte:** as fichas só usam o nome inglês (*Kimura from Closed Guard*, *Armlock from Closed Guard*). Não há aliases japoneses (ude garami, juji gatame, sankaku jime) nem em português (americana invertida, chave de braço). Sem sobreposição de vocabulário, o embedding cai no vizinho mais genérico, que é o chunk hub do §6.1.
+
+Para um teste justo, 2 casos **inéditos**, fora de qualquer prompt, foram adicionados: `sankaku jime` (triângulo em japonês) e `fuga da montada com ponte` (upa em português). Avaliação com o mesmo `eval_retrieval` nos 10 casos dentro da KB.
+
+### 7.2 Correção v1: multi-query (gpt-oss-20b, união pelo menor score)
+
+Um LLM pequeno gera 3 reformulações em inglês (nome padrão + posição). Busca-se com a original + as 3 e une-se pelo melhor score de cada chunk. É o mesmo algoritmo do `MultiQueryRetriever` (`langchain_classic`), mas implementado à mão para manter os scores, já que o componente pronto devolve só a união dos documentos e não permitiria a tabela comparável.
+
+Resultado: **top-1 6/10 → 8/10**. Resolveu `juji gatame` e o inédito `sankaku jime`. Duas falhas residuais, com causas diferentes:
+
+- **`ude garami`: o modelo pequeno não conhece o termo.** As variações geradas foram `Arm Entanglement guard / side control / mount`, uma tradução literal do japonês, não o nome da técnica. O mesmo prompt no gpt-oss-120b gerou `Kimura from guard / side control / mount`. **O multi-query herda o conhecimento de domínio do LLM que reformula.**
+- **`como sair de baixo da montada`: a fusão por menor score é frágil.** A query original continua no conjunto e traz o hub com distância 12,4. Basta um resultado ruim com score baixo para dominar o ranking. Mesmo com o 120b, no `ude garami` o kimura (14,3) venceu o hub (14,8) por apenas 0,5.
+
+### 7.3 Correção v2: multi-query (gpt-oss-120b) + Reciprocal Rank Fusion
+
+```python
+for v in variants:
+    for rank, (doc, dist) in enumerate(index.similarity_search_with_score(v, k=k)):
+        entry = fused.setdefault(key, [doc, dist, 0.0])
+        entry[2] += 1 / (60 + rank)          # RRF (Cormack et al., 2009)
+ranked = sorted(fused.values(), key=lambda e: -e[2])[:k]
+```
+
+O RRF ignora a escala da distância e soma pontos por **concordância**: um chunk que aparece nas listas de várias reformulações sobe. O hub só aparece na lista da query original e é neutralizado.
+
+| Query | Antes | v1 (20b, min) | v2 (120b, RRF) | Top-1 v2 |
+| --- | --- | --- | --- | --- |
+| armlock closed guard | ✅ | ✅ | ✅ | armlock / Safety |
+| chave de braço na guarda fechada | ✅ | ✅ | ✅ | armlock / Safety |
+| juji gatame from guard | ❌ | ✅ | ✅ | armlock / Steps |
+| raspagem de tesoura | ✅ | ✅ | ✅ | scissor_sweep / Defenses |
+| ude garami | ❌ | ❌ | ✅ | kimura / Common mistakes |
+| como sair de baixo da montada | ❌ | ❌ | ✅ | mount_escape_upa / Steps |
+| passar a guarda de la riva | ✅ | ✅ | ✅ | dlr / Common mistakes |
+| trinagle chok | ✅ | ✅ | ✅ | triangle / Common mistakes |
+| **sankaku jime** (inédito) | ❌ | ✅ | ✅ | triangle / Common mistakes |
+| **fuga da montada com ponte** (inédito) | ✅ | ✅ | ✅ | mount_escape_upa / Defenses |
+| **Top-1 / Top-3** | **6/10 · 7/10** | **8/10 · 9/10** | **10/10 · 10/10** | |
+
+Os casos fora da KB (berimbolo, "como saio daí?") continuam recuperando *alguma* ficha, porque retrieval sempre devolve k resultados. A abstenção é responsabilidade do agente (regra 3) e do verificador NLI da Fase 5.
+
+### 7.4 Trade-offs e alternativas
+
+| Abordagem | Custo por busca | Generaliza para termo novo? | Observação |
+| --- | --- | --- | --- |
+| Reescrita pelo agente (§6.2) | 0 extra (já há a chamada do agente) | Só o que o modelo sabe; viés se os exemplos forem os testes | Sem controle sobre a query |
+| Multi-query v1 (20b) | +1 chamada pequena | Parcial | Falha com jargão que o modelo pequeno não conhece |
+| **Multi-query v2 (120b + RRF)** | +1 chamada (~400 tokens) e latência | Sim, nos casos testados | Adotada |
+| HyDE | +1 chamada, saída longa | Sim | Melhor para perguntas vagas com resposta longa. Aqui o problema é de vocabulário (nome da técnica), que queries curtas atacam diretamente |
+| **Corrigir a fonte:** seção `## Aliases` em cada ficha + reindexar | 0 em tempo de execução | Só os aliases listados | Ataca a causa raiz; complementar ao multi-query |
+
+Precisão de seção: o top-1 da v2 acerta a **ficha**, mas a seção nem sempre é a mais útil (ex.: "Common mistakes" para uma pergunta "como fazer"). Como a tool devolve k = 3 seções, o agente costuma receber também "Steps". Um re-ranking por seção conforme a intenção (aprender → Steps; defender → Defenses) fica como melhoria futura.
+
+## 8. Limitações
 
 - **Significado de `weight_class` e `importance`** foi inferido ("0–4 leve→pesado", "0–5 fase mais avançada") e ainda não confirmado na documentação do dataset no Kaggle. Uma pergunta por categoria de peso pode receber resposta com rótulo errado.
 - **Avaliação SQL pequena** (6 perguntas + 2 de uso). Suficiente para expor os dois achados, não para estimar taxa de acerto geral.
 - **Retry não resolve falhas sistemáticas** (§5.4); depende de o prompt evitar o padrão.
 - **Cache em memória de processo** (`lru_cache`): some ao reiniciar e não é compartilhado entre usuários do Streamlit.
+- **Conjunto de retrieval pequeno** (10 casos na KB, 2 fora): mostra o mecanismo da falha e da correção, não estima recall geral. Os 10/10 da v2 não garantem robustez a jargão que nem o 120b conheça.
+- **Multi-query v2 não está no `search_technique` de produção:** custaria +1 chamada do 120b por busca, somada à chamada do agente. Na Fase 5 o agente continua reescrevendo a query; a seção `## Aliases` nas fichas é a correção sem custo pendente.
+- **O agente pula o retrieval** quando o prompt descreve a KB (§6.2); a lista de fichas no prompt precisa acompanhar a base.
+
+## 9. Próximos passos (Fase 5)
+
+- Verificador NLI (cross-encoder multilíngue) comparando cada frase da resposta com as seções recuperadas, mais checagem de coerência entre as próprias frases.
+- `create_openai_tools_agent` + `AgentExecutor` com as 4 categorias de tool (hardcoded, RAG, API, text-to-SQL) e `RunnableWithMessageHistory`.
+- Avaliação no LangSmith: qualidade da resposta e trajetória (tools esperadas × executadas), reaproveitando a extração de trajetória do `run_rag_agent`.
