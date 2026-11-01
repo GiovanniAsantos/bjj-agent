@@ -5,11 +5,57 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 
 SMALL_MODEL = "openai/gpt-oss-20b"
 
 
-def build_llm(model: str | None = None, **kwargs) -> ChatGroq:
+class DummyChatModel(BaseChatModel):
+    """LLM fake p/ rodar sem chave (USE_DUMMY=true).
+    Com tools: chama search_technique 1x com a pergunta e responde com a observação. Sem tools: texto fixo.
+    """
+
+    @property
+    def _llm_type(self) -> str:
+        return "dummy"
+
+    def bind_tools(self, tools, **kwargs):
+        from langchain_core.utils.function_calling import convert_to_openai_tool
+
+        return self.bind(tools=[convert_to_openai_tool(t) for t in tools], **kwargs)
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        tool_names = [t["function"]["name"] for t in kwargs.get("tools", [])]
+        last = messages[-1]
+        if isinstance(last, ToolMessage):
+            msg = AIMessage(
+                content=f"(dummy) Segundo a base de conhecimento: {last.content[:300]}"
+            )
+        elif "search_technique" in tool_names:
+            question = next(
+                (m.content for m in reversed(messages) if isinstance(m, HumanMessage)),
+                "",
+            )
+            msg = AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "search_technique",
+                        "args": {"query": question},
+                        "id": "dummy-call",
+                    }
+                ],
+            )
+        else:
+            msg = AIMessage(content="(dummy) Resposta simulada do Mestre.")
+        return ChatResult(generations=[ChatGeneration(message=msg)])
+
+
+def build_llm(model: str | None = None, **kwargs) -> BaseChatModel:
+    if os.getenv("USE_DUMMY", "false").lower() == "true":
+        return DummyChatModel()
     return ChatGroq(
         model=model or os.getenv("GROQ_MODEL"), temperature=0, max_retries=6, **kwargs
     )
@@ -139,12 +185,30 @@ Think first: write the reasoning (1-2 short sentences), then decide the intent.
 
 
 INTENT_EXAMPLES = [
-    {"question": "Me mostra como faz a kimura da guarda", "answer": '{"reasoning": "The student wants to SEE the kimura, so a video.", "intent": "video", "search_term": "kimura closed guard bjj"}'},
-    {"question": "Como saio daí?", "answer": '{"reasoning": "No position is given and the escape depends on it.", "intent": "clarify", "search_term": null}'},
-    {"question": "Who founded Gracie Barra?", "answer": '{"reasoning": "Asks about the origin of an academy.", "intent": "history", "search_term": "Gracie Barra"}'},
-    {"question": "Faixa branca, como defendo o armlock da guarda fechada?", "answer": '{"reasoning": "Asks how to defend a submission from a known position.", "intent": "technique", "search_term": "armlock defense closed guard bjj"}'},
-    {"question": "Heel hook finaliza muito no ADCC?", "answer": '{"reasoning": "Asks how common a submission is in competition, a number.", "intent": "stats", "search_term": "heel hook ADCC"}'},
-    {"question": "Qual dieta pra secar pro campeonato?", "answer": '{"reasoning": "Diet and weight cut are outside techniques and history.", "intent": "off_topic", "search_term": null}'},
+    {
+        "question": "Me mostra como faz a kimura da guarda",
+        "answer": '{"reasoning": "The student wants to SEE the kimura, so a video.", "intent": "video", "search_term": "kimura closed guard bjj"}',
+    },
+    {
+        "question": "Como saio daí?",
+        "answer": '{"reasoning": "No position is given and the escape depends on it.", "intent": "clarify", "search_term": null}',
+    },
+    {
+        "question": "Who founded Gracie Barra?",
+        "answer": '{"reasoning": "Asks about the origin of an academy.", "intent": "history", "search_term": "Gracie Barra"}',
+    },
+    {
+        "question": "Faixa branca, como defendo o armlock da guarda fechada?",
+        "answer": '{"reasoning": "Asks how to defend a submission from a known position.", "intent": "technique", "search_term": "armlock defense closed guard bjj"}',
+    },
+    {
+        "question": "Heel hook finaliza muito no ADCC?",
+        "answer": '{"reasoning": "Asks how common a submission is in competition, a number.", "intent": "stats", "search_term": "heel hook ADCC"}',
+    },
+    {
+        "question": "Qual dieta pra secar pro campeonato?",
+        "answer": '{"reasoning": "Diet and weight cut are outside techniques and history.", "intent": "off_topic", "search_term": null}',
+    },
 ]
 
 _example_prompt = ChatPromptTemplate.from_messages(
