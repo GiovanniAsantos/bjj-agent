@@ -2,12 +2,18 @@
 
 import time
 import uuid
+import warnings
 
 from dotenv import load_dotenv
 
 load_dotenv()  # antes de importar src: tools.py lê USE_DUMMY no import
 
 from src.agent import TOOL_CATEGORY, build_mestre_with_memory
+
+# APIs classic deprecated por escolha (rubrica) e aviso do torch.jit: ruído no chat, não erro.
+# Depois dos imports: o langchain_core registra o próprio filtro de deprecation ao ser importado.
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def main():

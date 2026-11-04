@@ -114,10 +114,11 @@ Escala usada:
 | --- | --- | --- |
 | **Início (00_setup)** | 0 | `llm.invoke("What is the diference between an armlock and a triangle?")` com string crua |
 | **Fim da fase 1** | 1 | `chat_prompt` (PTCF) + `PydanticOutputParser` (`MestreResponse`), `search_chain` com `PromptTemplate`, `invoke`/`batch`/`stream`; vídeo por código fixo |
-| **Atual (fim da fase 2)** | 2 → 3 (parcial) | Router por intenção (`RunnableBranch` + classificador PTCF/few-shot) escolhe um caminho por pergunta (nível 2); agente `create_agent` com 3 tools (`search_video`, `search_wikipedia`, `search_technique` sobre FAISS) e memória por thread (`MemorySaver`), mais o ReAct legado (`initialize_agent`). Falta para o nível 3 completo: memória de conversa e perfil (fase 3) e `query_adcc` (fase 4). Ver `04_relatorio_fase2.md`. |
-| **Alvo (fase 5)** | 4 | ReAct + memória + RAG/SQL + verificação NLI + avaliação no LangSmith |
+| **Fim da fase 2** | 2 → 3 (parcial) | Router por intenção (`RunnableBranch` + classificador PTCF/few-shot) escolhe um caminho por pergunta (nível 2); agente `create_agent` com 3 tools (`search_video`, `search_wikipedia`, `search_technique` sobre FAISS) e memória por thread (`MemorySaver`), mais o ReAct legado (`initialize_agent`). Falta para o nível 3 completo: memória de conversa e perfil (fase 3) e `query_adcc` (fase 4). Ver `04_relatorio_fase2.md`. |
+| **Fim das fases 3–4** | 3 | Memória de conversa, intenção e entidades (`FightState`, `StudentProfile`); `query_adcc` (text-to-SQL), `ibjjf_points` (hardcoded) e agente de recuperação com multi-query. Ver `05_relatorio_fase3.md` e `06_relatorio_fase4.md` |
+| **Final (fase 5)** | 4 ✔ | `create_openai_tools_agent` + `AgentExecutor` com 5 tools em 4 categorias, `RunnableWithMessageHistory` por sessão, verificador NLI + coerência com 1 revisão, avaliação no LangSmith (trajetória, qualidade, verificação) e interfaces CLI/Streamlit. Ver `07_relatorio_fase5.md` |
 
-Caminho: fase 2 → nível 2/3 (ferramentas + ReAct; `search_video` vira ferramenta) ✔, fase 3 → nível 3 (memória), fase 4 → nível 3 completo (RAG e SQL), fase 5 → nível 4 (verificação e avaliação).
+Caminho: fase 2 → nível 2/3 (ferramentas + ReAct; `search_video` vira ferramenta) ✔, fase 3 → nível 3 (memória) ✔, fase 4 → nível 3 completo (RAG e SQL) ✔, fase 5 → nível 4 (verificação e avaliação) ✔.
 
 ## 5. Decomposição hierárquica (1.4)
 
@@ -172,9 +173,51 @@ class StudentProfile(BaseModel):
 
 Detalhamento e implementação na fase 3.
 
-**Implementado na fase 3** (ver `05_relatorio_fase3.md`): curto prazo = buffer + `trim_messages` (janela de 300 tokens) + `FightState` (posição, técnica, ação do oponente); longo prazo = `StudentProfile` com `belt`, `gi`, `injuries` e `studied_techniques`, alimentado por extração de entidades (`BJJEntities`) e regra de merge em código. `weight_kg` e `style` ficaram de fora até haver uso. A persistência entre sessões fica para a fase 5.
+**Implementado na fase 3** (ver `05_relatorio_fase3.md`): curto prazo = buffer + `trim_messages` (janela de 300 tokens) + `FightState` (posição, técnica, ação do oponente); longo prazo = `StudentProfile` com `belt`, `gi`, `injuries` e `studied_techniques`, alimentado por extração de entidades (`BJJEntities`) e regra de merge em código. `weight_kg` e `style` ficaram de fora até haver uso.
 
-## 7. Evidências e achados da fase 1
+**No agente final (fase 5)**: curto prazo = `RunnableWithMessageHistory` com um `InMemoryChatMessageHistory` por `session_id` (uma sessão por aba do Streamlit ou execução da CLI). O LLM resolve as referências ("vídeo disso") direto do histórico. A persistência entre sessões (SQLite + `StudentProfile`) ficou como próximo passo (`07_relatorio_fase5.md` §11).
+
+## 7. Arquitetura final implementada (fase 5)
+
+Camadas, de fora para dentro:
+
+```
+┌──────────────────────── Interface ────────────────────────┐
+│  app.py (Streamlit)              cli.py (terminal)        │
+│  session_id por aba │ painel: tools, categoria, veredito, │
+│  suporte NLI, revisada, tempo │ erro 429 sem derrubar a UI│
+└───────────────┬───────────────────────────────────────────┘
+                │ invoke({"input"}, configurable.session_id)
+┌───────────────▼──────── Memória ──────────────────────────┐
+│ RunnableWithMessageHistory → chat_history por session_id  │
+└───────────────┬───────────────────────────────────────────┘
+┌───────────────▼──────── Agente ───────────────────────────┐
+│ create_openai_tools_agent + AgentExecutor (max 5 iter.)   │
+│ system Mestre: regras de escolha de tool + anti-alucinação│
+└──┬─────────────┬─────────────┬────────────┬───────────┬───┘
+   ▼             ▼             ▼            ▼           ▼
+search_technique search_video search_wikipedia query_adcc ibjjf_points
+ (RAG/FAISS)    (API YouTube) (API Wikipedia) (text-to-SQL) (hardcoded)
+                │
+┌───────────────▼──────── Verificação ──────────────────────┐
+│ verified_answer: NLI (resposta × trechos do RAG) +        │
+│ coerência interna → contradiz/incoerente: 1 revisão;      │
+│ pouco_sustentada / sem_fonte: aviso ao aluno              │
+└───────────────┬───────────────────────────────────────────┘
+                ▼
+     {"output", "verdict", "support_rate", "revised", "tools"}
+```
+
+| Camada | Arquivo | Decisão principal |
+| --- | --- | --- |
+| Interface | `app.py`, `cli.py` | As duas usam o mesmo `build_mestre_with_memory()`; o Streamlit carrega FAISS e NLI com `@st.cache_resource` no start (~30 s), não na 1ª pergunta |
+| Memória | `src/agent.py` | Só o texto final entra no histórico (`output_messages_key="output"`), sem os metadados da verificação |
+| Agente | `src/agent.py` | Function calling nativo (o gpt-oss falha no ReAct em texto, fase 2) |
+| Ferramentas | `src/tools.py`, `src/text_to_sql.py` | Toda falha vira string legível para o agente; `USE_DUMMY` em todas |
+| Verificação | `src/verifier.py` | mDeBERTa multilíngue em CPU; contradição só com p ≥ 0,8 (alarme conservador) |
+| Modo dummy | `src/chains.py` (`DummyChatModel`) | O projeto inteiro roda sem chave de API |
+
+## 8. Evidências e achados da fase 1
 
 | Achado | O que aconteceu | Consequência no projeto |
 | --- | --- | --- |

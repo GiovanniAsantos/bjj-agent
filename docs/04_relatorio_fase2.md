@@ -113,12 +113,17 @@ Com o índice corrigido, o agente chamou `search_technique('triangle choke close
 | Router, ramo history (classificar + responder) | 2 | ~1.610 |
 | Router, ramo video (classificar + tool) | 1 | ~1.250 |
 | Agente RAG com índice **antigo** | 4+ (`search_technique` repetida) | ~2.950 até o `429` |
+| Router, reexecução de 04/11 (history + video) | 3 | 2.783 (1.096 + 540 + 1.147) |
+| Agente RAG com índice **corrigido** (04/11) | 3 (2× `search_technique`) | 1.956 |
+| Chain com modelo inexistente (fallback) | 0 com sucesso | 0, com 2 erros `404` registrados pelo `on_llm_error` |
 
 O agente com o índice antigo repetia a busca procurando a ficha certa e bateu o **limite diário** do Groq (200.000 tokens/dia no gpt-oss-120b). O `on_llm_error` registrou o erro antes da exceção. Uma execução completa do 02b custa ~60 mil tokens.
 
+Na reexecução de 04/11, com o índice corrigido, o mesmo agente resolveu "Como escapo da montada?" com 2 buscas (`mount escape` → `escape from mount bjj`) e 1.956 tokens, cerca de 1/3 a menos que o fluxo antigo até o erro. No fallback, o callback registrou os 2 erros (tentativa + retry do `with_retry`) e a chain devolveu a resposta segura sem exceção.
+
 ## 6. Limitações
 
-- **Evidências pendentes de reexecução:** a célula do agente RAG + callback (02b §7–8) ainda mostra a execução com o índice antigo, e a célula 11 do `02_react_agent` (ReAct v2 com gpt-oss × qwen) está sem saída salva. Os resultados descritos em §3.2 vêm da execução registrada no diagnóstico do notebook; rodar de novo quando o limite diário liberar.
+- **Evidências reexecutadas em 04/11:** a célula do callback (02b §8) e a célula 11 do `02_react_agent` foram rodadas de novo. ReAct v2 + `gpt-oss-120b`: vídeo com 4 erros de parse → `iteration limit`; Helio Gracie e guarda fechada respondidos **sem tool** (o 2º com 1 erro de parse). ReAct v2 + `qwen3.8-27b`: 3/3 (`search_video`, `search_wikipedia`, nenhuma tool no conceito), 0 erros de parse, 0,9–2,6 s por pergunta. Isso confirma o §3.2.
 - **Base pequena:** 6 fichas. Pergunta fora delas (ex.: berimbolo) depende do prompt para o agente admitir que não sabe; casos difíceis serão testados na fase 4.
 - **Wikipedia rasa:** o resumo de 800 caracteres não traz detalhes como o criador do berimbolo; o Mestre responde "não tenho certeza" (certo, mas pouco útil).
 - **Dois modelos no projeto:** o ReAct legado depende do `qwen3.8-27b`, e a lista de modelos do Groq muda (não há mais llama-3.x nesta conta).
